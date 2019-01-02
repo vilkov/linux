@@ -183,7 +183,7 @@ static struct vm_area_struct *remove_vma(struct vm_area_struct *vma)
 	if (vma->vm_file)
 		fput(vma->vm_file);
 	mpol_put(vma_policy(vma));
-       uksm_remove_vma(vma);
+	uksm_remove_vma(vma);
 	vm_area_free(vma);
 	return next;
 }
@@ -3148,7 +3148,7 @@ void exit_mmap(struct mm_struct *mm)
 
 	/*
 	 * Taking write lock on mmap_sem does not harm others,
-	 * but it's crucial for uksm to avoid races.
+	 * but it's crucial for UKSM to avoid races.
 	 */
 	down_write(&mm->mmap_sem);
 
@@ -3164,8 +3164,12 @@ void exit_mmap(struct mm_struct *mm)
 	arch_exit_mmap(mm);
 
 	vma = mm->mmap;
-	if (!vma)	/* Can happen if dup_mmap() received an OOM */
+	/* Can happen if dup_mmap() received an OOM */
+	if (!vma) {
+		/* Release write lock previously taken for UKSM */
+		up_write(&mm->mmap_sem);
 		return;
+	}
 
 	lru_add_drain();
 	flush_cache_mm(mm);
